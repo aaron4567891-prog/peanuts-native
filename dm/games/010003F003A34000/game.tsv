@@ -1,0 +1,49 @@
+# PEANUTS: Pokémon: Let's Go, Pikachu! base 1.0.0 Android bring-up profile.
+# Surveyed from the base dump: SDK 5.4.150, NVN, Game Freak's engine and Wwise.
+# Code rewrite and shader split checked on Windows; no device boot verified.
+
+# ---- Identity ----
+title_id	010003F003A34000
+program_id	010003F003A34000
+
+# ---- App ----
+name	Pokémon: Let's Go, Pikachu!
+ipa	PokemonLetsGoPikachu.ipa
+app_category	public.app-category.games
+# PEANUTS: the game excludes FullKey on its controller-selection screen (styles
+# 0x5a). Handheld exposes the supported Handheld npad; verified on the Thor.
+op_mode	handheld
+# PEANUTS: the launcher preserves guest 60 Hz; guarded observations in patches.py
+# enable normal-speed overworld 60 FPS for caps >=60, retaining native 30 FPS
+# menus, battles and capture. Higher 90/120 caps do not unlock those native rates.
+fps_limit	30
+fps_limit_min	30
+fps_limit_max	120
+fps_ceiling_only	1
+
+# ---- Versions ----
+build	v0	1.0.0	main=1c375692de4f4b879abe88742dc0ca60	subsdk0=7a7ca048269ec2e6ed9a2d812a951d9f	subsdk1=15c1c7f4f364010c95aeb5bb8adf30dc	sdk=eee08631aff2601e0718f411cfefa13f
+package	v0
+shader_versions	v0
+
+# ---- Files ----
+# every module main imports from
+modules	main subsdk0 subsdk1 sdk
+romfs_marker	bin/app/staff_roll/bin/staff_roll_00.arc
+zip_store	.arc:.bfotf:.gfpak:.ptcl:.webm:.metallib
+
+# ---- Memory ----
+# main sets a heap of at most the pool − 64 MB: a 3328 MB heap region
+mem_reserve	0x100000000
+mem_alias	0x10000000
+mem_stack	0x10000000
+app_pool	0xCD500000
+# the NPDM declares 0 MB of system resource: IsVirtualAddressMemoryEnabled is false, as on Horizon (Big Brain Academy: Brain vs. Brain sets a heap only then)
+sys_resource	0x0
+# Rewritten images total 68,701,896 bytes; profile_guess.mem_used rounds them
+# to 66 MiB, then adds 4 MiB so SetHeapSize can cover the images.
+mem_used	0x4600000
+
+# ---- Shader split ----
+shader_groups	/bin/=bin /system_resource/=systemresource
+shader_note	Pokémon: Let's Go, Pikachu! shaders (provisional profile)

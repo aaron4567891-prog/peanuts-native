@@ -1,0 +1,8 @@
+# PEANUTS: static bring-up checks only; no real-device boot or driver coverage yet.
+status	bring-up
+
+# PEANUTS: the full base-game Vulkan build: all 4,710 vertex shaders use draw
+# parameters; one shader uses Int64 and physical-storage-buffer addresses.
+required	feature.shaderDrawParameters	1	Shader draw parameters: every vertex shader of the game uses them
+degraded	feature.shaderInt64	1	64-bit shader integers: one statically extracted shader uses them; its runtime importance is unverified
+degraded	feature.bufferDeviceAddress	1	Buffer device addresses: one statically extracted shader uses them; its runtime importance is unverified
