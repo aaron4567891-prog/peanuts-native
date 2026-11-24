@@ -139,6 +139,16 @@ def header(g):
     if ft not in ('0', '30', '60'): sys.exit(f'{g.id}: fps_target must be 0, 30 or 60: {ft}')
     fl = g.get('fps_limit', '0')   # Android: the host's frame limiter's default (hle_fpslock.c fps_limit_wait, a wait before each present): 0 = none, else at most that many frames a second; DM_FPS_LIMIT and the launcher's choice override it
     if not fl.isdigit() or int(fl) and not 10 <= int(fl) <= 60: sys.exit(f'{g.id}: fps_limit must be 0 (none) or 10 to 60 frames a second: {fl}')
+    # PEANUTS: presentation-only ceilings must not opt into native timing changes.
+    ceiling = g.get('fps_ceiling_only', '0')
+    if ceiling not in ('0', '1') or len(g.values('fps_ceiling_only')) > 1:
+        sys.exit(f'{g.id}: fps_ceiling_only must be 0 or 1, once')
+    if ceiling == '1':
+        conflicts = ('fps_modes', 'fps_plan_120', 'fpslocker', 'fps_memory', 'fpslocker_plan', 'fps_plan', 'fps_steps', 'fps_step_elapsed', 'fps_decouple', 'fps_limit_present')
+        if ft != '0' or pi != 'game' or any(g.values(k) for k in conflicts):
+            sys.exit(f'{g.id}: fps_ceiling_only requires game interval, fps_target 0, and no native timing rows')
+        if fl != '30' or g.get('fps_limit_min', '20') != '30' or g.get('fps_limit_max', '60') not in ('60', '90', '120'):
+            sys.exit(f'{g.id}: fps_ceiling_only requires default/minimum 30 and maximum 60, 90 or 120')
     modes = g.get('fps_modes', '')
     if modes:
         rates = modes.split(',')

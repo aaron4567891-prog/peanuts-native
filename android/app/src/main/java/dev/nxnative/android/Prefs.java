@@ -115,6 +115,7 @@ final class Prefs {
     static int paceMax(String titleId) { Profile p = Profile.of(titleId); return p != null && !p.decoupled && (p.fpsLimit > 0 || p.optInPresentRate()) ? p.fpsLimitMax : 60; }
     static int[] paceCaps(String titleId) {
         Profile p = Profile.of(titleId);
+        if (p != null && p.fpsCeilingOnly) return p.fpsCeilingCaps(); // PEANUTS: caps without game timing writes.
         if (p != null && !p.fpsModes.isEmpty()) return p.fpsModeCaps();
         // PEANUTS: Whole-step games expose only their supported divisors.
         return p != null && (steps(titleId) || p.fpsLocker.contains(",vsync_u32,")) ? new int[] {FrameRateCaps.GAME_OWNED, 0, 30, 20} : FrameRateCaps.rates(paceMax(titleId), p == null ? 20 : p.fpsLimitMin);
@@ -161,6 +162,7 @@ final class Prefs {
         boolean owned = p != null && (p.optInPresentRate() || p.ownedByDefault);   // PEANUTS: fps_owned_default: Game owned before the profile's limit
         int defaultCap = owned ? FrameRateCaps.GAME_OWNED : of(c).getInt("fps_cap", -1);
         int v = FrameRateCaps.normalize(of(c).getInt(gameKey("fps_cap", titleId), r != null ? r : pl > 0 && !owned ? pl : defaultCap), paceMax(titleId));
+        if (p != null && p.fpsCeilingOnly) return p.fpsCeilingCap(v); // PEANUTS: preserve saved 90/120 ceilings.
         if (p != null && !p.fpsModes.isEmpty()) return p.fpsMode(v);
         return v > 0 && p != null && v < p.fpsLimitMin ? p.fpsLimitMin : v;
     }

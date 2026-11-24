@@ -11,6 +11,7 @@ Banana Native ships several releases a day, so this fork is kept as a **thin ove
    - `peanuts/` — companion packages, docs, tests, `scripts/`.
 2. **Hooks into upstream files are one-liners, each tagged `PEANUTS`.** A hook is a call-out to Peanuts code, never logic.
    Allowed hook sites (keep this list current):
+   - `dm/host/dm.h` — `OBS_LGP_FPS` (35), the exact-build offline timing gates for Pikachu; `dm/gfx/nvn/hle_nvn.c` — weak calls before each present and when choosing its interval, delegated to `dm/peanuts/pikachu_fps.c`. Inactive adapters leave the original cadence intact. `android/host/CMakeLists.txt` compiles that source.
    - `android/app/src/main/java/dev/nxnative/android/GameActivity.java` — create/destroy the companion `Presentation`; (2026-11-13) one line in
      `onCreate` that touches the last-3-played list for dynamic shortcuts (`dev.peanuts.launch.RecentGames`, `peanuts/docs/LAUNCHERS.md`); (2026-11-21) one line at the top of
      `fpsTick` and one in `onDestroy` for the total play time (`dev.peanuts.launch.PlayTime`; the game page's Played row is one line in `MainActivity`'s More card); and

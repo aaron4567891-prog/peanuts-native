@@ -270,5 +270,21 @@ class FpsModes(unittest.TestCase):
         self.assertIn('requires fps_modes including 120', out)
 
 
+# PEANUTS: ceiling-only presentation policy rejects native timing combinations.
+class FpsCeilingOnly(unittest.TestCase):
+    def test_valid(self):
+        for maximum in (60, 90, 120):
+            self.assertEqual(header(f'fps_ceiling_only\t1\nfps_limit\t30\nfps_limit_min\t30\nfps_limit_max\t{maximum}\n'), (0, ''))
+
+    def test_conflicting_policy(self):
+        base = 'fps_ceiling_only\t1\nfps_limit\t30\nfps_limit_min\t30\n'
+        for extra in ('fps_modes\t30,60,120\n', 'fps_target\t60\n', 'present_interval\tdisplay\n', 'fps_decouple\tsead\n', 'fps_step_elapsed\t1\n', 'fps_limit_present\t1\n'):
+            rc, out = header(base + extra)
+            self.assertNotEqual(rc, 0, extra)
+            self.assertIn('fps_ceiling_only requires', out)
+        rc, out = header('fps_ceiling_only\t2\n')
+        self.assertNotEqual(rc, 0)
+        self.assertIn('fps_ceiling_only must be', out)
+
 if __name__ == '__main__':
     unittest.main()

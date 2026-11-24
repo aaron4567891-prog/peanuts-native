@@ -2270,7 +2270,9 @@ static void present_cfg(const win_t *o) {
     LOG("[nvn] present tick %d Hz, interval mode %s (%s; present interval set by the game %d; %s)", g_hz, g_display_mode ? "display (one frame per tick, a cut)" : "game (original semantics)",
         m ? "DM_PRESENT_INTERVAL" : "game profile present_interval", o->interval, scr > 0 ? "window, fixed 60 Hz" : "no window, fixed 60 Hz");
 }
-static int present_itv(const win_t *o) { int c = fps_present_cap(), k = atomic_load(&g_fs_k); return c ? (k && fstep_on() ? k : 60 / c) : g_display_mode ? 1 : o->interval > 0 ? o->interval : 1; }   // vsyncs per frame that presentation follows
+// PEANUTS: a guarded game timing adapter can select a scene's cadence without changing its guest clock.
+__attribute__((weak)) int pn_lgp_fps_interval(void) { return 0; }
+static int present_itv(const win_t *o) { int scene = pn_lgp_fps_interval(); if (scene) return scene; /* PEANUTS: inactive adapters return zero. */ int c = fps_present_cap(), k = atomic_load(&g_fs_k); return c ? (k && fstep_on() ? k : 60 / c) : g_display_mode ? 1 : o->interval > 0 ? o->interval : 1; }   // vsyncs per frame that presentation follows
 // The acquire's wait for the display link: the present interval's vsyncs (60 Hz units), or with present_interval display above 60 Hz (DM_PRESENT_HZ=120 on a 120 Hz link,
 // DM_PRESENT_LINK=2) one tick of the present rate, as many link ticks as that takes. Before, a 120 Hz link waited two ticks per frame there, and display mode never went past 60 fps
 static int link_wait(const win_t *o, uint64_t timeout_ns) {
@@ -2413,10 +2415,12 @@ static const int *present_crop(const int win[4], int tw, int th, int lc[4]) {
     }
     return lc;
 }
+__attribute__((weak)) void pn_lgp_fps_present(void) {} // PEANUTS: snapshot the exact-build adapter's field heartbeat once per present.
 NVN(nvnQueuePresentTexture, void, NVNqueue *q, NVNwindow *w, int idx) {
     (void)q; win_t *o = (win_t *)w; o->presents++;
     if (o->presents == 1 || o->presents == 60 || o->presents == 300) pc_log(o->presents);
     shp_report(o->presents);   // (DM_MEM_FILEBACK; the per-pool lines stop at 8, then every 64th)
+    pn_lgp_fps_present(); // PEANUTS: menus/battles keep their native cadence; overworld frames may use 60 Hz.
     dm_fps_lock_tick(); dm_ue_cvar_tick();
     if (dm_fps_state) __atomic_store_n((uint32_t *)(dm_fps_state + 4), (uint32_t)dm_movie_playing(), __ATOMIC_RELAXED);   // the stubs' copy of the movie state (hle.h)
     int c = fps_step_cap();

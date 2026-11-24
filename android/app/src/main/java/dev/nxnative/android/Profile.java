@@ -34,6 +34,22 @@ final class Profile {
     boolean steps;   // game.tsv has fps_steps rows (build.gradle stepsOf): a framework of whole fixed steps a frame, which Hold 60 fps keeps at one (Prefs.steps)
     boolean presentOnly;   // game.tsv fps_limit_present 1 (build.gradle presentOnlyOf): the frame limit only paces the presents, the game's own logic is not known to follow it (Prefs.presentOnly)
     boolean elapsedFrameStep; // PEANUTS: Android hooks derive game time from elapsed time.
+    boolean fpsCeilingOnly; // PEANUTS: presentation ceilings preserve the game's own 60 Hz timing and interval.
+
+    // PEANUTS: Ceiling choices never unlock or write the native game frame rate.
+    int[] fpsCeilingCaps() { return fpsLimitMax >= 120 ? new int[] {-2, 120, 90, 0, 30} : fpsLimitMax >= 90 ? new int[] {-2, 90, 0, 30} : new int[] {-2, 0, 30}; }
+    int fpsCeilingCap(int value) {
+        if (value == -2) return -2;
+        if (value >= 120 && fpsLimitMax >= 120) return 120;
+        if (value >= 90 && fpsLimitMax >= 90) return 90;
+        return value <= 0 || value >= 60 ? 0 : 30;
+    }
+    List<String> fpsCeilingEnv(int selected) {
+        int cap = fpsCeilingCap(selected);
+        return List.of("DM_FPSLOCKER=", "DM_FPSLOCKER_PLAN=", "DM_FPSLOCKER_OWNED=1", "DM_FPSLOCKER_INTERVAL=0",
+                "DM_FPS_TARGET=0", "DM_FPS_LIMIT=" + (cap == -2 ? 0 : cap == 0 ? 60 : cap),
+                "DM_PRESENT_INTERVAL=game", "DM_PRESENT_HZ=60", "DM_VSYNC_HZ=60", "DM_FPS_DECOUPLE=0");
+    }
     boolean ownedByDefault;   // PEANUTS: game.tsv fps_owned_default 1: Game owned until the player picks a rate; the frame limits stay offered (Prefs.paceCap)
     int fpsLimit;   // game.tsv fps_limit (build.gradle fpsLimitOf): the host's frame limit by default, frames a second (0 = none); the launcher offers a frame limit for it (Prefs.limited)
     String fpsLockerPlan = "";
@@ -86,11 +102,12 @@ final class Profile {
     }
 
     boolean fpsRestart(int started, int selected) {
+        if (fpsCeilingOnly) return false; // PEANUTS: a ceiling changes only the live presentation limiter.
         return (started == -2) != (selected == -2) || !fpsPlan120.isEmpty() && (started == 120) != (selected == 120);
     }
     // PEANUTS: native timing modes need an engine target as well as a presentation limit.
     boolean usesFpsModeTarget() {
-        return !fpsPlan120.isEmpty() || (!fpsModes.isEmpty() && fpsLocker.isEmpty() && fpsLockerPlan.isEmpty());
+        return !fpsCeilingOnly && (!fpsPlan120.isEmpty() || (!fpsModes.isEmpty() && fpsLocker.isEmpty() && fpsLockerPlan.isEmpty())); // PEANUTS: ceilings never select an engine target.
     }
     int fpsModeTarget(int selected) { return fpsMode(selected) == 120 ? 0 : fpsMode(selected) == 30 ? 30 : 60; }
     List<String> fpsModeEnv(int selected) {
@@ -598,6 +615,7 @@ final class Profile {
             p.ownedByDefault = c.length > 38 && c[38].equals("1");   // PEANUTS: fps_owned_default
             p.aspectPlan = c.length > 39 ? c[39] : "";   // PEANUTS: aspect_plan
             p.aspectUntested = c.length > 40 && c[40].equals("1");   // PEANUTS: aspect_plan_untested
+            p.fpsCeilingOnly = c.length > 41 && c[41].equals("1"); // PEANUTS: fps_ceiling_only
             out.add(p);
         }
         return Collections.unmodifiableList(out);

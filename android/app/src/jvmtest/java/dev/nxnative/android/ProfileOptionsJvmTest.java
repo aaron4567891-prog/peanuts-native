@@ -181,6 +181,24 @@ public final class ProfileOptionsJvmTest {
             tmpDir.delete();
         }
 
+        // PEANUTS: cap-only profiles preserve saved ceilings and guest timing for every selection.
+        String[] ceilingRow = new String[42];
+        java.util.Arrays.fill(ceilingRow, "");
+        ceilingRow[0] = "010003F003A34000"; ceilingRow[1] = "Ceiling test"; ceilingRow[2] = "0";
+        ceilingRow[15] = "30"; ceilingRow[31] = "120"; ceilingRow[34] = "30"; ceilingRow[41] = "1";
+        Profile ceiling = Profile.parse(String.join("\t", ceilingRow)).get(0);
+        check(ceiling.fpsCeilingOnly && !pOld.fpsCeilingOnly, "ceiling policy opt-in and legacy compatibility");
+        check(java.util.Arrays.equals(ceiling.fpsCeilingCaps(), new int[] {-2,120,90,0,30}), "only reviewed ceiling choices");
+        check(!ceiling.usesFpsModeTarget(), "ceilings cannot select a native engine target");
+        for (int selected : new int[] {-2,30,60,90,120}) {
+            int saved = selected == 60 ? 0 : selected;
+            check(ceiling.fpsCeilingCap(selected) == saved && ceiling.fpsCeilingCap(saved) == saved, "ceiling round trip " + selected);
+            check(!ceiling.fpsRestart(-2, selected) && !ceiling.fpsRestart(120, selected), "live ceiling change " + selected);
+            List<String> capEnv = ceiling.fpsCeilingEnv(saved);
+            check(capEnv.contains("DM_FPS_LIMIT=" + (selected == -2 ? 0 : selected)), "selected presentation ceiling " + selected);
+            for (String required : new String[] {"DM_VSYNC_HZ=60", "DM_PRESENT_HZ=60", "DM_PRESENT_INTERVAL=game", "DM_FPS_TARGET=0", "DM_FPSLOCKER=", "DM_FPSLOCKER_PLAN=", "DM_FPS_DECOUPLE=0"})
+                check(capEnv.contains(required), "unchanged native pacing " + selected + ": " + required);
+        }
         System.out.println("ok");
     }
 }

@@ -573,7 +573,9 @@ public final class GameActivity extends Activity implements SurfaceHolder.Callba
         if (prof != null && hasFpsPlan && !prof.fpsLockerPlan.isEmpty()) env.add("DM_FPSLOCKER_PLAN=" + prof.fpsLockerPlan);   // PEANUTS: only pass a plan the loader can apply
         if (prof != null && prof.fpsPlan120.isEmpty() && !prof.fpsLocker.isEmpty() && !gameOwnedAtStart) env.add("DM_FPSLOCKER=" + prof.fpsLocker);
         int cap = Prefs.fpsCap(this, id);   // the game's own frame rate cap (its in-game panel, its Game settings), else the main screen's (unset: the profile's fps_target)
-        if (gameOwnedAtStart) {
+        if (prof != null && prof.fpsCeilingOnly) { // PEANUTS: high ceilings leave guest pacing untouched.
+            env.addAll(prof.fpsCeilingEnv(fpsModeAtStart));
+        } else if (gameOwnedAtStart) {
             env.add("DM_FPSLOCKER="); env.add("DM_FPSLOCKER_OWNED=1"); env.add("DM_FPSLOCKER_INTERVAL=0"); env.add("DM_FPS_TARGET=0"); env.add("DM_FPS_LIMIT=0");
             env.add("DM_PRESENT_INTERVAL=game"); env.add("DM_PRESENT_HZ=60"); env.add("DM_VSYNC_HZ=60"); env.add("DM_FPS_DECOUPLE=0");
         } else if (prof != null && !prof.fpsPlan120.isEmpty()) {

@@ -424,7 +424,11 @@ final class SidePanel extends FrameLayout {
                 Prefs.fpsCap(act, game(), v);
                 boolean startedOwned = act instanceof GameActivity && ((GameActivity)act).gameOwnedAtStart();
                 boolean restart = act instanceof GameActivity && ((GameActivity)act).fpsRestartRequired(v);
-                if (v != FrameRateCaps.GAME_OWNED && !startedOwned && !restart) {
+                // PEANUTS: ceiling-only profiles can switch live, including Game owned, without engine writes.
+                Profile ceiling = Profile.of(game());
+                if (ceiling != null && ceiling.fpsCeilingOnly) {
+                    Native.fpsLimitSet(v == FrameRateCaps.GAME_OWNED ? 0 : v > 0 ? v : 60);
+                } else if (v != FrameRateCaps.GAME_OWNED && !startedOwned && !restart) {
                     Native.fpsLimitSet(v > 0 ? v : 60);
                     Profile p = Profile.of(game());
                     if (p != null && p.usesFpsModeTarget()) Native.fpsCapSet(p.fpsModeTarget(v));   // PEANUTS: select the native engine mode with the live cap
@@ -881,7 +885,11 @@ final class SidePanel extends FrameLayout {
             boolean other = now > 0 && chosen > 0 && held > 0 && 60 % chosen != 0 && held < chosen;
             boolean startedOwned = act instanceof GameActivity && ((GameActivity)act).gameOwnedAtStart();
             boolean restart = act instanceof GameActivity ? ((GameActivity)act).fpsRestartRequired(chosen) : (chosen == FrameRateCaps.GAME_OWNED) != startedOwned;
-            fpsNow.setVisibility(restart || other ? VISIBLE : GONE);
+            // PEANUTS: distinguish an upper ceiling from a native frame-rate unlock.
+            Profile ceiling = Profile.of(game());
+            boolean ceilingOnly = ceiling != null && ceiling.fpsCeilingOnly;
+            fpsNow.setVisibility(restart || other || ceilingOnly ? VISIBLE : GONE);
+            if (ceilingOnly) fpsNow.setText("Supported native modes preserve game speed; actual FPS may vary by scene."); // PEANUTS: caps can coexist with guarded scene-aware timing adapters.
             if (restart) fpsNow.setText("Restart the game to apply " + Prefs.paceLabel(chosen) + ".");
             else if (other) fpsNow.setText("This game moves in whole frames: " + chosen + " fps runs at " + held + " fps, at full game speed.");
         } else {

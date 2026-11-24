@@ -121,7 +121,8 @@ enum { OBS_UE_MALLOC = 21,                                       // Unreal's FMa
        OBS_DKB_WIDE = 32,                                               // Donkey Kong Bananza (main v458752): the scene camera's updater about to be read (register in the parameter bits 0-4) and, by the kind in bits 5 up, the UI projection copies, a pane just sized and a layout just built (android/dkb_wide.c)
        OBS_MKW_WIDE = 33,                                               // Mario Kart World (main 1.8.0): camera aspect stores (register in the parameter bits 0-4) and the 2D layer's projection reads (kind in bits 5 up) (android/mkw_wide.c)
        OBS_MTF_SIZE = 34,                                               // Mario Tennis Fever (nro0 1.1.1): its scenes' size just computed from the graphics scale (android/mtf_size.c)
-       OBS_MAX = 35 };   // 28-30 are Pokopia's camera gates on its own branch (android/pkp_aspect.c)
+       OBS_LGP_FPS = 35, /* PEANUTS: exact-build Pikachu overworld timing gates (dm/peanuts/pikachu_fps.c). */
+       OBS_MAX = 36 };   // PEANUTS: reserve the Pikachu timing callback; 28-30 are Pokopia's camera gates.
 // A gate number's bits from 8 up are a parameter for its callback (OBS_REGION_GOT: the register that holds the address). Callbacks read the registers; a write to x0–x29 takes
 // effect when the gate returns (entry.S restores them from the frame), which OBS_STDALLOC_INIT and OBS_UE_REGION do
 void gate_obs_set(int id, void (*fn)(uint64_t *regs, int param));
