@@ -1,0 +1,21 @@
+{
+  "format": 1,
+  "type": "dual-screen-mod",
+  "title_id": "010003F003A34000",
+  "name": "Pokemon: Let's Go, Pikachu! live party",
+  "version": "0.1.0",
+  "min_runtime": 25,
+  "requires_module": true,
+  "module": {
+    "abi": 1,
+    "build_ids": [
+      "1C375692DE4F4B87"
+    ],
+    "libraries": {
+      "android-arm64-v8a": {
+        "path": "modules/android-arm64-v8a/010003F003A34000.so",
+        "sha256": "@MODULE_SHA256@"
+      }
+    }
+  }
+}
