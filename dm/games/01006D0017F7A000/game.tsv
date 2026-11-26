@@ -1,5 +1,5 @@
 # Mario & Luigi: Brothership: Acquire's game on Unreal Engine 4.27 (project Vermillion; IoStore, MallocBinned3), SDK 12.3.2, NVN, Wwise, Bink movies through a material; the base game, 1.0.0 (v0).
-# The same sdk and movie builds as OCTOPATH TRAVELER II and TRIANGLE STRATEGY.
+# The update in hand fails its NCA's hash check; the same sdk and movie builds as OCTOPATH TRAVELER II and TRIANGLE STRATEGY.
 # Started from the NSP script's provisional profile (dm/games/profile_guess.py) and brought up on the Mac (docs/agents)
 # Format: see dm/games/README.md
 
@@ -14,9 +14,7 @@ ipa	MarioLuigiBrothership.ipa
 app_category	public.app-category.games
 
 # ---- Versions ----
-# The update has a different main; its shaders must be scanned separately.
-build	v65536	1.0.1	main=bf0607ac795b593a3f685934c249147c	subsdk0=dade22cfe6f24efe62d76409522c850b	sdk=5bcf525f24eb28658a8d67ac27800d9b
-android_builds	v65536
+build	v0	1.0.0	main=59874c9b530095ace0298b938d8e5ea7	subsdk0=dade22cfe6f24efe62d76409522c850b	sdk=5bcf525f24eb28658a8d67ac27800d9b
 package	v0
 shader_versions	v0
 
