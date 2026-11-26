@@ -33,7 +33,8 @@ The profile carries no prewarm seed list (`pso_manifest.tsv` has only its header
 
 ## Android
 
-- **Open:** a run of 1.0.0 on a phone, the version the tables are for: the log of a first and a second launch on the same pack.
+- **Reported: the first launch renders the 3D scene white; the second launch on the same pack draws it.** Seen on update 1.0.1 with the earlier version of this profile, which built only 1.0.1. A fault that clears once the pipelines are cached fits draws skipped while their pipelines are built on a first run, not shaders missing from the pack (those would stay missing). An Android prewarm seed list, recorded from phone runs, is the fix for that. No log is kept yet: to confirm, the logs of a first and a second launch on one pack.
+- **Open:** a run of 1.0.0 on a phone, the version the tables are for.
 - **Open:** 1.0.1 through "Build anyway", and then a scan of its shaders for a 1.0.1 build row.
 
 ## Found on this game
