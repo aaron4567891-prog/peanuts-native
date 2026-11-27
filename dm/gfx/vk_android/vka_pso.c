@@ -20,6 +20,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/resource.h>
+#include <sys/mman.h>   // PEANUTS: pl_map
+#include <sys/stat.h>   // PEANUTS: pl_map
 #include <errno.h>
 #include <time.h>
 
@@ -1594,6 +1596,23 @@ static void *pl_slurp(const char *path, size_t *n) {
     fclose(f);
     return d;
 }
+// PEANUTS: the shader parts' cache mapped read-only instead of read into a buffer (pl_unmap after vkCreatePipelineCache): no copy of the whole file beside the
+// driver's own, and up to 4 GiB. Mortal Kombat 1's parts of 73,665 programs are 1,131 MiB, over pl_slurp's 1024 MiB, so every start prepared them all again
+// (813 s on an AYN Thor, Turnip); its pages are the file's, given back as soon as the driver has taken the data
+#define PL_MAP_MAX (4096ull << 20)
+static void *pl_map(const char *path, size_t *n) {
+    *n = 0;
+    int fd = path && *path ? open(path, O_RDONLY | O_CLOEXEC) : -1; if (fd < 0) return NULL;
+    struct stat st; void *d = NULL;
+    if (!fstat(fd, &st) && st.st_size > 0) {
+        if ((unsigned long long)st.st_size >= PL_MAP_MAX) VRED_ONCE("%s is %lld MiB: not read (over %llu MiB)", path, (long long)(st.st_size >> 20), PL_MAP_MAX >> 20);
+        else if ((d = mmap(NULL, (size_t)st.st_size, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED) { VRED_ONCE("%s: mmap of %lld MiB failed (errno %d): not read", path, (long long)(st.st_size >> 20), errno); d = NULL; }
+        else *n = (size_t)st.st_size;
+    }
+    close(fd);
+    return d;
+}
+static void pl_unmap(void *d, size_t n) { if (d && n) munmap(d, n); }
 // The shader parts' cache, the profile's pairs and the learned programs, read once (pc_open_once, after the pipelines' cache)
 // PEANUTS: the depth mode the profile's seed was made in (its graphics keys' gl_depth, the majority; 1 = near = 0), -1 without a seed or graphics keys. Before a first
 // start's stamp says it, the parts were prepared for near = -w and pf_main threw them away when the game set near = 0: 18 of the 24 seeds of 2026-11-21 are near = 0
@@ -1626,7 +1645,7 @@ static void pcl_open(void) {
     if (!V.gpl) return;
     if (g_pc_path[0]) snprintf(g_pcl_path, sizeof g_pcl_path, "%s.parts", g_pc_path);
     if (g_pw_path[0]) snprintf(g_pl_path, sizeof g_pl_path, "%s.programs2", g_pw_path);
-    size_t n = 0; void *data = pl_slurp(g_pcl_path, &n);
+    size_t n = 0; void *data = pl_map(g_pcl_path, &n); size_t mapped = n;   // PEANUTS: pl_map (MK1's 1,131 MiB of parts); n is zeroed below when the data does not fit, mapped is what to unmap
     if (n > 32) {
         uint32_t hl, ver, vendor, devid; uint8_t uuid[VK_UUID_SIZE];
         memcpy(&hl, data, 4); memcpy(&ver, (uint8_t *)data + 4, 4); memcpy(&vendor, (uint8_t *)data + 8, 4); memcpy(&devid, (uint8_t *)data + 12, 4); memcpy(uuid, (uint8_t *)data + 16, VK_UUID_SIZE);
@@ -1677,7 +1696,7 @@ static void pcl_open(void) {
     if (r && n) { ci.initialDataSize = 0; ci.pInitialData = NULL; n = 0; atomic_store(&g_pairs_done, 0); atomic_store(&g_learn_done, 0); r = vk.vkCreatePipelineCache(V.dev, &ci, NULL, &g_pcl); }
     if (r) g_pcl = VK_NULL_HANDLE;
     if (!n) { atomic_store(&g_pairs_done, 0); atomic_store(&g_learn_done, 0); }
-    free(data);
+    pl_unmap(data, mapped);   // PEANUTS: pl_map (the driver copied what it keeps in vkCreatePipelineCache)
     VLOG("shader parts cache %s: %zu bytes read; programs: %zu of the profile (%u prepared), %zu set by the game in earlier runs (%u prepared)%s%s", g_pcl_path[0] ? g_pcl_path : "(not kept)", n,
          g_npairs, (unsigned)atomic_load(&g_pairs_done), g_nlearn, (unsigned)atomic_load(&g_learn_done), g_pcl ? "" : "; no cache made: the parts go into the pipelines' cache",
          prep_full() ? "" : "; under DM_VK_PSO_PREP_MEM_MB of memory: only the programs whose draws missed are prepared, not the profile's lists");
