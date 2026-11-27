@@ -1776,7 +1776,16 @@ def promote_locals(m):
                         continue
                     for w in x[1:]:
                         if w in fvars: bad.add(w)
-                dominates = _dominance(blks, preds)
+                # Build the dominator tree only for a cross-block load. A block
+                # always dominates itself, including unreachable blocks.
+                dominates = None
+                def load_dominated(lblk, lidx, sblk, sidx):
+                    nonlocal dominates
+                    if lblk == sblk:
+                        return lidx > sidx
+                    if dominates is None:
+                        dominates = _dominance(blks, preds)
+                    return dominates(sblk, lblk)
                 good, remap = set(), {}
                 for v in fvars - bad:
                     ls = loads.get(v, [])
@@ -1784,7 +1793,7 @@ def promote_locals(m):
                         if not ls: good.add(v)
                         continue
                     sblk, sidx, val = stores[v]
-                    if all(dominates(sblk, lblk) and (lblk != sblk or lidx > sidx) for lblk, lidx, _ in ls):
+                    if all(load_dominated(lblk, lidx, sblk, sidx) for lblk, lidx, _ in ls):
                         good.add(v)
                         for _, _, lres in ls: remap[lres] = val
                 if not good: break
