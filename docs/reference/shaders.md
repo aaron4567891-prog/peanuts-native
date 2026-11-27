@@ -509,6 +509,13 @@ Finding, keying and translating shaders (`dm/gfx/tools/shader_split.py`, `dmsh_b
 - **Reader:** `uepak.py` `inline_shaders` tells such a pak from one with archives by its directory index (cooked packages and no `.ushaderbytecode`; an encrypted index is taken for one with archives), and `shader_split.py` `ue_legacy_jobs` reads it file by file, Zlib and LZ4 blocks decoded in Python (`Pak.read`), so no host runs. `ue_inline_shaders` finds each LZ4 block by its first literals, the record's `LSLG`, with the token and literal length bytes in front of it, and takes it when it decodes to exactly the raw size after the block.
 - **Found on:** [OCTOPATH TRAVELER II](../../dm/games/0100A3501946E000/README.md): 13,980 unique shaders (1,910 vertex, 11,346 pixel, 694 compute, 30 geometry) from the 3.3 GB pak in 13 s.
 
+### Unreal Engine 4.27 shaders inline in IoStore export bundles
+
+- **Symptom:** the same as [inline in cooked packages](#unreal-engine-427-shaders-inline-in-cooked-packages-lz4), but the pak beside the IoStore containers (`.utoc` / `.ucas`) holds only the global shader cache: the materials' shaders are in the containers.
+- **How it is stored:** with IoStore on, the cooked packages are the containers' export bundles. Each material keeps its shaders inline as in a 4.27 pak (`FShaderMapResourceCode`, LZ4 blocks); the pak keeps `Engine/GlobalShaderCache-SF_GLSL_SWITCH.bin`.
+- **Reader:** `shader_split.py` `ue_legacy_jobs` adds the export bundles of the containers beside such a pak, the newest copy of each chunk ID (`uepak.mount_order`), as jobs of their own (`UE_IO`). `ue_io_shaders` reads each chunk with the game's own decoder as far as its blocks need it (`uepak.Toc`) and scans it as a pak's cooked package (`ue_packages`), labelled by the package's path where the container has a directory index. An encrypted container is read with the key that opens the pak beside it.
+- **Found on:** [Mario & Luigi: Brothership](../../dm/games/01006D0017F7A000/README.md): 45,824 unique shaders (13,581 vertex, 28,296 pixel, 3,814 compute, 133 geometry); the split takes 39 s.
+
 ### Unreal Engine 3 shader caches (Oodle packages)
 
 - **Symptom:** `the shader split found no shaders in main or the RomFS`; the survey lists the RomFS as cooked packages (`.xxx`) and `.usm` movies only.
