@@ -30,6 +30,10 @@ app_pool	0xCD500000
 # the NPDM declares 12 MB of system resource
 sys_resource	0xc00000
 
+# ---- Graphics ----
+# Large block-compressed textures without their finest level (the Vulkan replay, Android): on an AYN Thor (15.6 GB) Android's memory killer closed the game at
+# 7.2 GB resident while a scene loaded (texture images 597 → 771 MiB in its last 30 s, 384 MB of the phone free; 2026-11-28, PeanutsTest 132, Turnip)
+tex_soft	on
 # ---- Shader split ----
 # the decoded shader code archives: the engine's global shaders and the game's material shaders
 shader_groups	ShaderArchive-Global-=global ShaderArchive-=game
