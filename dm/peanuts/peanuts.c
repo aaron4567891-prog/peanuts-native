@@ -695,7 +695,10 @@ static int rt_scan_root(const char *root, uint64_t want, int allow_old, char *di
 }
 static int rt_find_package(char *dir, size_t n, uint64_t *title) {
     uint64_t want = rt_running_title();
-    char roots[3][512]; int nroots = 0;
+    char roots[4][512]; int nroots = 0;
+    // PEANUTS: the folder the launcher found this title's companion in (dev.peanuts.Companion.companionRoot): a build with mods in the build folder while the game's
+    // own pack, and so its companion, is in app storage (packs/peanuts), which none of the folders below reaches (Shining Pearl with Luminescent Platinum, 0.1.9)
+    { const char *e = getenv("PN_COMPANION_ROOT"); if (e && *e) snprintf(roots[nroots++], sizeof roots[0], "%s", e); }
     snprintf(roots[nroots++], sizeof roots[0], "%s/../peanuts", dm_module_dir());
     // A code-mod build in the chosen build folder lives at <title>/mod-<hash>/pack. Its companion is still installed beside the
     // normal pack, at <title>/peanuts, not inside the variant. App-owned packs already share <packs>/peanuts through the first root.

@@ -70,11 +70,34 @@ public final class Companion {
         return PeanutsPrefs.bottomScreenInGames(game) ? GameScreen.PLAYING : -1;
     }
 
-    /** As the runtime finds it: a package beside the pack whose manifest names this title */
+    /** As the runtime finds it (PN_COMPANION_ROOT, {@link #companionRoot}): a package whose manifest names this title */
     private static boolean companionInstalled(Activity game, String id) {
         String pack = game.getIntent().getStringExtra("pack");
-        java.io.File parent = pack == null ? null : new java.io.File(pack).getAbsoluteFile().getParentFile();
-        return parent != null && CompanionSection.packageFor(new java.io.File(parent, "peanuts"), id) != null;
+        return pack != null && companionRoot(game, new java.io.File(pack), id) != null;
+    }
+
+    /**
+     * The peanuts/ folder that holds this title's companion for a start of pack: beside the pack, or for a build with code mods beside the game's own pack.
+     * The companion is installed beside the game's own pack (BuildService), and a build with mods can lie elsewhere: a player whose game was built in app storage
+     * (packs/&lt;title ID&gt;) and who set a build folder later got the variant at &lt;build folder&gt;/&lt;title ID&gt;/mod-&lt;hash&gt;/pack, and neither this check nor the
+     * host's search (dm/peanuts/peanuts.c rt_find_package) looked in packs/peanuts: Shining Pearl with Luminescent Platinum on an AYN Thor showed no companion
+     * ("no companion package beside …/010018E011D92000/mod-acf8bd2c76c4/pack", 0.1.9). Null when none of them has a package for the title.
+     * The game's environment carries the answer as PN_COMPANION_ROOT (GameActivity), which the host searches first
+     */
+    public static java.io.File companionRoot(android.content.Context c, java.io.File pack, String id) {
+        java.util.List<java.io.File> roots = new java.util.ArrayList<>();
+        java.io.File parent = pack.getAbsoluteFile().getParentFile();
+        if (parent != null) roots.add(new java.io.File(parent, "peanuts"));
+        if (id != null && dev.peanuts.build.ModdedBuild.isVariantPack(pack)) {
+            java.io.File normal = dev.peanuts.build.ModdedBuild.normalPackBeside(pack);
+            if (normal != null && normal.getAbsoluteFile().getParentFile() != null) roots.add(new java.io.File(normal.getAbsoluteFile().getParentFile(), "peanuts"));
+            java.io.File ext = c.getExternalFilesDir(null);
+            roots.add(new java.io.File(ext != null ? ext : c.getFilesDir(), "packs/peanuts"));   // the game's own pack in app storage (dev.nxnative.android.AppStorage.pack)
+            java.io.File build = PeanutsPrefs.buildPackDir(c, id);   // or in the build folder, <title ID>/pack
+            if (build != null && build.getAbsoluteFile().getParentFile() != null) roots.add(new java.io.File(build.getAbsoluteFile().getParentFile(), "peanuts"));
+        }
+        for (java.io.File r : roots) if (CompanionSection.packageFor(r, id) != null) return r;
+        return null;
     }
 
     /** No companion after all: the game's cover if Settings keep one, else the display goes back to Android */
