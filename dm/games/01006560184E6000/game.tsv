@@ -1,0 +1,36 @@
+# Mortal Kombat 1 (Switch, update 1.29.0, SDK 15.3.2)
+# Provisional profile for Android bring-up.
+
+# ---- Identity ----
+title_id	01006560184E6000
+program_id	01006560184E6000
+
+# ---- App ----
+name	Mortal Kombat 1
+ipa	MortalKombat1.ipa
+app_category	public.app-category.games
+
+# ---- Versions ----
+build	v1900544	1.29.0	main=6e3d5f5c37d6ab858d2fd8bab6946bee	subsdk0=368f01d5cb42f06cd125dc739d036719	sdk=8618895246b420329b77746b960a66ab
+package	v1900544
+shader_versions	v1900544
+
+# ---- Files ----
+# every module main imports from
+modules	main subsdk0 sdk
+romfs_marker	MK12/Content/Paks/MK12-Switch.ucas
+zip_store	.bk2:.mov:.mp4:.pak:.ttf:.ucas:.utoc:.metallib
+
+# ---- Memory ----
+# Unreal: nninitStartup reserves a 62 GB address region and its FMallocBinned3 takes 37 GB of it, so a 64 GB alias region for the bring-up on the Mac. The rewriter cuts the allocator in any Unreal 4 / 5 main (dm/tools/ue_malloc.py) and gives the region what the alias region has room for (dm/tools/ue_region.py), so an iPhone takes a smaller guest block, as Octopath Traveler 0's profile (docs/reference/memory.md)
+mem_reserve	0x1028000000
+mem_alias	0x1000000000
+mem_stack	0x10000000
+app_pool	0xCD500000
+# the NPDM declares 12 MB of system resource
+sys_resource	0xc00000
+
+# ---- Shader split ----
+# the decoded shader code archives: the engine's global shaders and the game's material shaders
+shader_groups	ShaderArchive-Global-=global ShaderArchive-=game
+shader_note	Mortal Kombat 1 shaders (provisional profile)
