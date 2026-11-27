@@ -22,6 +22,7 @@ struct mavc {
     int red, red_fmt, rgba;
     int in_order, wait_misses;   // in_order: the SPS allows no reordering (avc_sps_in_order): the decoder runs in low latency and each packet waits for its picture; wait_misses: waits that ended without it
 };
+#define LOW_LATENCY_GAME 0x01009D901BC56000ull   // Donkey Kong Country Returns HD: the one game whose movies get low latency (GI.mp4 waited on its last frame)
 #define WAIT_MISSES_MAX 3   // a decoder that ignores low latency keeps a picture back however long a packet waits: after this many, packets stop waiting
 
 mavc *mavc_new(void) { mavc *a = calloc(1, sizeof *a); if (!a) die("movie: AVC decoder allocation failed"); return a; }
@@ -86,7 +87,8 @@ static int open_codec(mavc *a) {
     AMediaFormat_setBuffer(f, "csd-0", csd[0], 4 + (size_t)a->nsps); AMediaFormat_setBuffer(f, "csd-1", csd[1], 4 + (size_t)a->npps);
     // A stream whose output order is its decode order: MediaCodec's low latency (KEY_LOW_LATENCY, Android 11) hands each picture out as soon as it is decoded,
     // as the Switch's decoder and VideoToolbox (depth 0) do; without it c2.qti.avc.decoder kept the last 2 pictures until end of stream (avc_sps_in_order)
-    a->in_order = avc_sps_in_order(a->sps, (size_t)a->nsps); a->wait_misses = 0;
+    // Only Donkey Kong Country Returns HD for now (LOW_LATENCY_GAME): every other game keeps the decoder as it was until this is checked on its movies
+    a->in_order = DM_GAME_PROGRAM_ID == LOW_LATENCY_GAME && avc_sps_in_order(a->sps, (size_t)a->nsps); a->wait_misses = 0;
     if (a->in_order) AMediaFormat_setInt32(f, "low-latency", 1);
     media_status_t st = AMediaCodec_configure(a->c, f, NULL, NULL, 0);
     AMediaFormat_delete(f);
