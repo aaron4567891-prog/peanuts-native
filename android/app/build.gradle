@@ -8,6 +8,23 @@ plugins {
 // own, libnxhost_<title ID>.so with its libnxlaunch_<title ID>.so (src/main/cpp/CMakeLists.txt): the host has its profile compiled in, as dm/host/Makefile's GAME, so a game
 // runs only in an APK built with its profile. The first is the default (the graphics self-test loads its host)
 def nxGames = (providers.gradleProperty('nxGames').getOrElse('') ?: providers.gradleProperty('nxGame').getOrElse('')).split(',').collect { it.trim() }.findAll { it }.unique()
+// Custom builds can select the release catalog plus the added games, or every source profile.
+def nxGameSet = providers.gradleProperty('nxGameSet').getOrElse('')
+if (nxGameSet) {
+    def root = rootProject.projectDir.parentFile.parentFile
+    if (nxGameSet == 'custom') {
+        nxGames = ['peanuts/release-titles.txt', 'peanuts/custom-titles.txt'].collectMany {
+            new File(root, it).readLines('UTF-8').collect { line -> line.trim() }
+                .findAll { line -> line && !line.startsWith('#') }
+        }.unique()
+    } else if (nxGameSet == 'all') {
+        nxGames = new File(root, 'dm/games').listFiles()
+            .findAll { it.isDirectory() && it.name ==~ /[0-9A-F]{16}/ && new File(it, 'game.tsv').isFile() }
+            .collect { it.name }.sort()
+    } else {
+        throw new GradleException("nxGameSet must be custom or all, not $nxGameSet")
+    }
+}
 if (!nxGames) throw new GradleException('nxGames: no game (gradle.properties names every supported one; -PnxGames=<title ID>,... builds fewer)')
 nxGames.each { g ->
     if (!(g ==~ /[0-9A-F]{16}/)) throw new GradleException("nxGames: each game must be a title ID (16 upper-case hex digits), not $g")
@@ -315,7 +332,7 @@ def handheldGames = nxGames.findAll { g -> tsvRows(g, 'op_mode').any { it.size()
 def cheatsOf = { String game -> tsvRows(game, 'cheats').isEmpty() ? '' : '1' }
 def timeOfDayOf = { String game -> tsvRows(game, 'time_of_day').any { it.size() > 1 && it[1].trim() == '1' } ? '1' : '' }   // the Game tab's Time of day row only for profiles whose day/night cycle follows the user clock
 // PEANUTS: include each game's supported options in the launcher profile.
-def nxProfiles = nxGames.collect { g -> [g, nameOf(g).replaceAll(/[\t\n\\"]/, ' '), shaderTotalOf(g), shaderInputsOf(g), buildsOf(g), reqsOf(g), statusOf(g), deltaOf(g), stampOf(g), resolutionOf(g), romfsChecksOf(g), gpuTsOf(g), windowOf(g), decoupleOf(g), drsOf(g), fpsLimitOf(g), dlssOf(g), presentOnlyOf(g), stepsOf(g), tsvRows(g, 'mesh_vegetation_cut').isEmpty() ? '' : '1', optionsOf(g), sceneOf(g), presetsOf(g), skipLayersOf(g), recommendOf(g), variantsOf(g), presetFromOf(g), linkPlayOf(g), aspectsOf(g), timeOfDayOf(g), cheatsOf(g), fpsLimitMaxOf(g), fpsLockerOf(g), fpsLockerPlanOf(g), fpsLimitMinOf(g), fpsModesOf(g), fpsPlan120Of(g), tsvRows(g, 'fps_step_elapsed').isEmpty() ? '' : '1', tsvRows(g, 'fps_owned_default').isEmpty() ? '' : '1', aspectPlanOf(g), tsvRows(g, 'aspect_plan_untested').isEmpty() ? '' : '1', fpsTargetOf(g), fpsRatesOf(g)].join('\\t') }.join('\\n')   // PEANUTS: fps_owned_default, then aspect_plan and aspect_plan_untested, then fps_target and the engine rows' rates (Profile.fpsTarget, fpsRates), the last column
+def nxProfiles = nxGames.collect { g -> [g, nameOf(g).replaceAll(/[\t\n\\"]/, ' '), shaderTotalOf(g), shaderInputsOf(g), buildsOf(g), reqsOf(g), statusOf(g), deltaOf(g), stampOf(g), resolutionOf(g), romfsChecksOf(g), gpuTsOf(g), windowOf(g), decoupleOf(g), drsOf(g), fpsLimitOf(g), dlssOf(g), presentOnlyOf(g), stepsOf(g), tsvRows(g, 'mesh_vegetation_cut').isEmpty() ? '' : '1', optionsOf(g), sceneOf(g), presetsOf(g), skipLayersOf(g), recommendOf(g), variantsOf(g), presetFromOf(g), linkPlayOf(g), aspectsOf(g), timeOfDayOf(g), cheatsOf(g), fpsLimitMaxOf(g), fpsLockerOf(g), fpsLockerPlanOf(g), fpsLimitMinOf(g), fpsModesOf(g), fpsPlan120Of(g), tsvRows(g, 'fps_step_elapsed').isEmpty() ? '' : '1', tsvRows(g, 'fps_owned_default').isEmpty() ? '' : '1', aspectPlanOf(g), tsvRows(g, 'aspect_plan_untested').isEmpty() ? '' : '1', fpsTargetOf(g), fpsRatesOf(g)].join('\\t') }   // PEANUTS: fps_owned_default, then aspect_plan and aspect_plan_untested, then fps_target and the engine rows' rates (Profile.fpsTarget, fpsRates), the last column
 def lockOf = { String key -> def f = new File(repo, 'dm/gfx/tools/dmsh_chain.lock'); f.isFile() ? (f.readLines().find { it.startsWith(key + '\t') }?.split('\t')?.getAt(1) ?: 'unknown') : 'unknown' }
 
 android {
@@ -332,7 +349,9 @@ android {
         versionName nxVersion
         ndk { abiFilters 'arm64-v8a' }
         // The games this APK runs, with what the launcher needs of their profiles (Profile.java)
-        buildConfigField 'String', 'NX_PROFILES', "\"$nxProfiles\""
+        // Joining individual rows at runtime keeps the full catalog below the per-string constant limit.
+        def profileRows = nxProfiles.collect { '"' + it + '"' }.join(', ')
+        buildConfigField 'String', 'NX_PROFILES', 'String.join("\\n", ' + profileRows + ')'
         buildConfigField 'String', 'NX_COMMIT', "\"${commit ?: 'unknown'}\""
         buildConfigField 'String', 'NX_BRANCH', "\"${branch ?: 'unknown'}\""
         buildConfigField 'String', 'NX_DIRTY', "\"${commit ? dirty : ''}\""
