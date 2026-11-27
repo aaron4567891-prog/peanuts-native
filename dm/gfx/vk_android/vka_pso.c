@@ -1702,6 +1702,26 @@ static void pcl_open(void) {
          prep_full() ? "" : "; under DM_VK_PSO_PREP_MEM_MB of memory: only the programs whose draws missed are prepared, not the profile's lists");
 }
 // The shader parts' cache, its stamp and the learned programs to their files: force 1 now, else when parts were made since and the last save is a minute old
+// PEANUTS: the driver's copy of the shader parts' cache written straight into tmp through a shared mapping of the file (pcl_save): the pages are the file's, written
+// back by the kernel, so the copy holds no anonymous memory. 1 with *n its length (the file cut to it); 0 when the file cannot be made or mapped (the caller copies
+// through a buffer instead) or the copy fails. A cache that grew between the size query and the copy (VK_INCOMPLETE) is tried again with a quarter more room, 3 times
+static int pcl_copy_to_file(const char *tmp, size_t *n) {
+    for (int tr = 0; tr < 3; tr++) {
+        size_t q = 0; if (vk.vkGetPipelineCacheData(V.dev, g_pcl, &q, NULL) || !q) return 0;
+        size_t cap = q + q / 4, len = cap;
+        int fd = open(tmp, O_RDWR | O_CREAT | O_TRUNC | O_CLOEXEC, 0660); if (fd < 0) return 0;
+        void *m = ftruncate(fd, (off_t)cap) ? MAP_FAILED : mmap(NULL, cap, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        if (m == MAP_FAILED) { close(fd); unlink(tmp); return 0; }
+        VkResult gr = vk.vkGetPipelineCacheData(V.dev, g_pcl, &len, m);
+        int ok = gr == VK_SUCCESS && !munmap(m, cap) && !ftruncate(fd, (off_t)len);
+        if (gr != VK_SUCCESS) munmap(m, cap);
+        if (close(fd)) ok = 0;
+        if (ok) { *n = len; return 1; }
+        unlink(tmp);
+        if (gr != VK_INCOMPLETE) return 0;
+    }
+    return 0;
+}
 static void pcl_save(int force) {
     uint64_t t = now_ns();
     if (g_pl_path[0]) {
@@ -1719,18 +1739,33 @@ static void pcl_save(int force) {
     if (!force && t - g_pcl_save_ns < 600000000000ull) return;
     g_pcl_save_ns = t;
     pstamp st = {PSTAMP_MAGIC, vka_shader_lib_id(), g_pairs_id, atomic_load(&g_pairs_done), atomic_load(&g_learn_done), (uint32_t)(atomic_load(&g_prep_depth_zero) > 0), 0};   // (read before the copy: no more than it holds)
+    char tmp[1200], sp[1200], stt[1300]; snprintf(tmp, sizeof tmp, "%s.tmp", g_pcl_path); snprintf(sp, sizeof sp, "%s.done", g_pcl_path); snprintf(stt, sizeof stt, "%s.done.tmp", g_pcl_path);
+    // PEANUTS: the copy goes straight into the temporary file through a shared mapping (pcl_copy_to_file), not into a buffer of a quarter more than the cache: Mortal
+    // Kombat 1's parts are 1.2 GB, so each save held 1.5 GB more for over 2 s, and Android's memory killer closed the game during one (7.2 GB resident against the 6.2 GB
+    // the host counted, AYN Thor, 2026-11-28). The buffer is the fallback where the storage refuses the mapping
     size_t n = 0; void *d = NULL; VkResult gr = VK_INCOMPLETE;
-    for (int tr = 0; tr < 3 && gr == VK_INCOMPLETE; tr++) {
+    int mapped = pcl_copy_to_file(tmp, &n);
+    if (mapped) gr = VK_SUCCESS;
+    else for (int tr = 0; tr < 3 && gr == VK_INCOMPLETE; tr++) {
         size_t q = 0; if (vk.vkGetPipelineCacheData(V.dev, g_pcl, &q, NULL) || !q) { gr = VK_ERROR_UNKNOWN; break; }
         n = q + q / 4; free(d); d = malloc(n); if (!d) { gr = VK_ERROR_OUT_OF_HOST_MEMORY; break; }
         gr = vk.vkGetPipelineCacheData(V.dev, g_pcl, &n, d);
     }
     if (gr == VK_SUCCESS) {
-        char tmp[1200], sp[1200], stt[1300]; snprintf(tmp, sizeof tmp, "%s.tmp", g_pcl_path); snprintf(sp, sizeof sp, "%s.done", g_pcl_path); snprintf(stt, sizeof stt, "%s.done.tmp", g_pcl_path);
-        unlink(sp);   // (a cache file without its stamp is started empty: never a stamp ahead of its file)
-        if (pc_write_atomic(g_pcl_path, tmp, d, n) && pc_write_atomic(sp, stt, &st, sizeof st)) {
+        // PEANUTS: the stamp on disk is kept while the file is written when it promises no more than the new file holds (the same library, list and depth mode, and
+        // counts no higher: this run's cache grew from the file it read). It was removed first every time, and the game killed during the 2 s of writing 1.2 GB left a
+        // file without a stamp, which the next start prepared from nothing (MK1: 73,665 programs again). A stamp that may promise more still goes first
+        size_t on = 0; pstamp *op = pl_slurp(sp, &on);
+        int keep = op && on == sizeof *op && op->magic == PSTAMP_MAGIC && op->lib == st.lib && op->pairs_id == st.pairs_id && op->depth_zero == st.depth_zero
+                   && op->pairs_done <= st.pairs_done && op->learn_done <= st.learn_done;
+        free(op);
+        if (!keep) unlink(sp);   // (a cache file without its stamp is started empty: never a stamp ahead of its file)
+        int ok = mapped ? !rename(tmp, g_pcl_path) : pc_write_atomic(g_pcl_path, tmp, d, n);
+        if (!ok && mapped) unlink(tmp);
+        if (ok && pc_write_atomic(sp, stt, &st, sizeof st)) {
             g_pcl_saved = made;
-            VLOG("shader parts cache: %zu bytes written to %s (%u of the profile's programs and %u of the game's own prepared), %.0f ms", n, g_pcl_path, st.pairs_done, st.learn_done, (now_ns() - t) / 1e6);
+            VLOG("shader parts cache: %zu bytes written to %s (%u of the profile's programs and %u of the game's own prepared), %.0f ms%s", n, g_pcl_path, st.pairs_done, st.learn_done, (now_ns() - t) / 1e6,
+                 mapped ? "" : " (through a buffer)");
         } else VRED_ONCE("shader parts cache not written to %s", g_pcl_path);
     }
     free(d);
