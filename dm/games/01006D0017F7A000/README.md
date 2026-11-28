@@ -3,7 +3,7 @@
 
 ## Status
 
-The Android profile targets update 1.0.1. The shader tables and Fast Prepare file list were generated from 1.0.1. A fresh-cache Android gameplay run is pending. The profile leaves out the 60 and 120 fps overrides pending Android frame-time and game-speed measurements.
+The Android profile targets update 1.0.1. The shader tables and Fast Prepare file list were generated from 1.0.1. The beach renders on a clean Turnip launch with a starter seed and Background pipelines enabled. Qualcomm system-driver validation remains open. The profile leaves out the 60 and 120 fps overrides pending Android frame-time and game-speed measurements.
 
 ## Tested on
 
@@ -11,11 +11,13 @@ The base game ran headless on an Apple M6 Mac on 2026-11-04. The run went from a
 
 On 2026-11-28 the beach after loading a save was still white on the same Thor with the Qualcomm system driver (build `69e13475cb`, version `0x802a4035`). The app build was `00ebfe300df5`. The run read 1,606,092 bytes from its existing pipeline cache and skipped 592 draws while background pipelines compiled.
 
+Cold-cache tests on the same Thor used the Android host at `7078567` and a compatible older shader library. With Background pipelines enabled and no seed, the beach rendered white on both drivers. A local starter seed merged from their captures supplied 257 keys. With PurpleVK the game processed all 257 before guest entry, then rendered the beach after loading the copied save. With the Qualcomm system driver, startup prewarm was explicitly enabled for the test. It processed the seed, but the run later crashed inside `vulkan.adreno.so` while loading the save. The startup prewarm experiment does not establish Qualcomm compatibility.
+
 ## Builds
 
 | Version | Package | Main build | Evidence |
 |---|---|---|---|
-| 1.0.1 | `v65536` | `bf0607ac795b593a3f685934c249147c` | Full and targeted shader splits verified. Fresh-cache gameplay validation is pending. |
+| 1.0.1 | `v65536` | `bf0607ac795b593a3f685934c249147c` | Full and targeted shader splits verified. Seeded cold launch reached the beach on PurpleVK. |
 | 1.0.0 | `v0` | — | Historical Mac testing. |
 
 The Android shader split used the 1.0.1 NUP on the AYN Thor, with four workers and the game's Oodle decoder. The full split took 40 s, and the targeted split took 35 s. The targeted split selected 2 of 119 RomFS files. Its `shader_map.tsv`, `shader_facts.tsv`, `shader_pairs.tsv`, and `pso_pairs.tsv` matched the full split byte for byte.
@@ -82,4 +84,4 @@ General change first needed here:
 - **Current (2026-11-05):** the translator deletes 22 bindless accesses in 22 shaders (22 compute; imageBuffer 22), whose results read 0: `0117c7c8fbb6a5f2` `1ca3816f389a18ce` `4361dbbe8797c4da` `43bbad1ccaa23ea7` `55d9bc02a957cfc0` `58ebebab3418e50d` `632d83ffd8db2071` `6a89a43f0576e2b2` `73c08353f5d37896` `7acf11f6ad2d5919` `855ea5d0afce0e9b` `997096cef1c7b5f6` `ac980d4c676534bc` `ace307c991c69468` `b0786eaacfe8e5e5` `b407c64ae334d810` `c25e6888e5ff5949` `c4ef1679388f7ce1` `c7db95be19f06c62` `e00fb401a551b766` `e3a0dc30ae36ab4f` `f73848747856be53`. The cause is not traced, and whether a route reaches them is not known.
 - Past the first battle: nothing is tested. No IPA, no iPhone run.
 - The sound has not been listened to, and no route was found to make Unreal's renderer sound.
-- Android 1.0.1: verify the white 3D rendering reported in review is resolved, and record gameplay, frame timings, game speed, logs and fresh pipeline keys on both drivers.
+- Android 1.0.1: investigate the Qualcomm driver crash during the seeded run and measure frame times and game speed before offering profile caps.
