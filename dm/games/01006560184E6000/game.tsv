@@ -30,6 +30,10 @@ app_pool	0xCD500000
 # the NPDM declares 12 MB of system resource
 sys_resource	0xc00000
 
+# ---- Frame rate ----
+# The game's own 30 fps (rhi.SyncInterval 2, as on the Switch) by default: forced to 60 (SyncInterval 2 → 1) it crashed twice on an AYN Thor (Turnip), a GPU hang
+# 20 minutes in and a null vtable read at main+0x1fc7dbc in a loop over objects 11 minutes in, while Game owned (30) ran without a crash (2026-11-28). 60 stays a choice
+fps_target	30
 # ---- Graphics ----
 # Large block-compressed textures without their finest level (the Vulkan replay, Android): on an AYN Thor (15.6 GB) Android's memory killer closed the game at
 # 7.2 GB resident while a scene loaded (texture images 597 → 771 MiB in its last 30 s, 384 MB of the phone free; 2026-11-28, PeanutsTest 132, Turnip)
