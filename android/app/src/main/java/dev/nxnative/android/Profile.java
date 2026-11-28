@@ -42,7 +42,7 @@ final class Profile {
     String fpsLocker = "";   // reviewed build-gated FPSLocker memory writes, serialized by build.gradle
     int fpsLimitMin = 20;   // checked lower bound for timing correction plans
     int fpsLimitMax = 60;   // launcher-only opt-in to higher caps; does not change the runtime profile ABI
-    int fpsTarget;   // PEANUTS: game.tsv fps_target (build.gradle fpsTargetOf), 0 without one: the host's default target, which a game without a frame limit starts at until the player picks a cap (Prefs.fpsCap)
+    int fpsTarget = -1;   // PEANUTS: game.tsv fps_target (build.gradle fpsTargetOf), -1 without one: the host's default target, which a game without a frame limit starts at until the player picks a cap (Prefs.fpsCap); 0 (an explicit fps_target 0): Game owned (FrameRateCaps.targetDefault)
     boolean thermalCap;   // PEANUTS: game.tsv thermal_cap 1: the launcher passes DM_THERMAL_CAP=1 (rates above 30 hold 30 while the phone is hot; hle_nvn.c thermal_capped)
     String fpsRates = "";   // PEANUTS: "40,45" when every Android build's main has an engine row of a rate kind (hle_fpslock.c k_locks, build.gradle fpsRatesOf): the fps_target list offers them too (FrameRateCaps.targetCaps)
     boolean drs;   // game.tsv has drs_ctl rows (build.gradle drsOf): the host can steer the game's dynamic resolution (Prefs.drsGame)
@@ -617,7 +617,7 @@ final class Profile {
             p.ownedByDefault = c.length > 38 && c[38].equals("1");   // PEANUTS: fps_owned_default
             p.aspectPlan = c.length > 39 ? c[39] : "";   // PEANUTS: aspect_plan
             p.aspectUntested = c.length > 40 && c[40].equals("1");   // PEANUTS: aspect_plan_untested
-            try { p.fpsTarget = c.length > 41 && !c[41].isEmpty() ? Math.max(0, Integer.parseInt(c[41])) : 0; } catch (NumberFormatException e) { p.fpsTarget = 0; }   // PEANUTS: fps_target
+            try { p.fpsTarget = c.length > 41 && !c[41].isEmpty() ? Math.max(0, Integer.parseInt(c[41])) : -1; } catch (NumberFormatException e) { p.fpsTarget = -1; }   // PEANUTS: fps_target (-1: none; 0: an explicit 0, Game owned)
             p.fpsRates = c.length > 42 ? c[42] : "";   // PEANUTS: the rates the engine rows hold beyond 60, 30, 20 and 15
             p.thermalCap = c.length > 43 && c[43].equals("1");   // PEANUTS: thermal_cap
             out.add(p);

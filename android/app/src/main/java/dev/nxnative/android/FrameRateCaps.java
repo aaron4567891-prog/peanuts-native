@@ -116,7 +116,9 @@ final class FrameRateCaps {
     }
     /** A game's fps_target cap with no choice of its own and no recommended one: the main screen's when the player set one (null: never set), else the profile's own
      *  fps_target (-1: not passed, the host starts at it; EA SPORTS FC 27's 30) when it has one, else the main screen's default of 60 (fps cap audit B3) */
-    static int targetDefault(Profile p, Integer mainScreen) { return mainScreen != null ? mainScreen : p != null && p.fpsTarget > 0 ? -1 : 60; }
+    // PEANUTS: an explicit fps_target 0 starts the game Game owned (0 on this list): a game whose own pacing changes rate and steps its world per frame. Mortal Kombat 1
+    // sets 60 in fights and 30 in menus itself; forced to 60 everywhere it crashed, and at 30 its fights ran at half speed (AYN Thor, 2026-11-28)
+    static int targetDefault(Profile p, Integer mainScreen) { return mainScreen != null ? mainScreen : p != null && p.fpsTarget > 0 ? -1 : p != null && p.fpsTarget == 0 ? 0 : 60; }
 
     /**
      * A saved per-game cap moved between the two lists (their values differ: on the fps_target list -1 is Default, 0 Game owned, else the rate; on the frame limit list

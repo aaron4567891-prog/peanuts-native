@@ -212,7 +212,7 @@ def presentOnlyOf = { String game -> tsvRows(game, 'fps_limit_present').isEmpty(
 // PEANUTS: a FRAME_STEP the profile's patches.py defines (a line "FRAME_STEP = ..."), not the word in its header comment (Link's Awakening had a Hold 60 fps row that did nothing: fps cap audit B4)
 def stepsOf = { String game -> def pp = new File(repo, "dm/games/$game/patches.py"); def ft = tsvRows(game, 'fps_target'); (!tsvRows(game, 'fps_steps').isEmpty() || (!ft.isEmpty() && ft[0].size() > 1 && ft[0][1].trim() != '0' && pp.isFile() && pp.text =~ /(?m)^\s*FRAME_STEP\s*=/)) ? '1' : '' }
 // PEANUTS begin: the profile's fps_target (empty without one or at 0): a game without a frame limit starts at it until the player picks a cap (Prefs.fpsCap; fps cap audit B3)
-def fpsTargetOf = { String game -> tsvRows(game, 'fps_target').with { rs -> rs.isEmpty() || rs[0].size() < 2 || !(rs[0][1].trim() ==~ /[1-9][0-9]*/) ? '' : rs[0][1].trim() } }
+def fpsTargetOf = { String game -> tsvRows(game, 'fps_target').with { rs -> rs.isEmpty() || rs[0].size() < 2 || !(rs[0][1].trim() ==~ /[0-9]+/) ? '' : rs[0][1].trim() } }   // PEANUTS: an explicit 0 too (Game owned at the start: FrameRateCaps.targetDefault)
 // The rates beyond 60, 30, 20 and 15 the host's engine rows hold for the game: "40,45" when every main the app builds has a k_locks row of a rate kind in dm/host/hle_fpslock.c
 // (rate_ok: not the vsync kinds, which hold only divisors of 60; a mode switch does not set a rate). The fps_target list then offers 40 and 45 (FrameRateCaps.targetCaps)
 def lockKinds = [:].withDefault { [] }
