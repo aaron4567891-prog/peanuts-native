@@ -14,11 +14,11 @@ ipa	MarioLuigiBrothership.ipa
 app_category	public.app-category.games
 
 # ---- Versions ----
-# PEANUTS: Android targets update 1.0.1. The checked-in shader tables are from the base game.
+# PEANUTS: Android targets update 1.0.1. The shader tables were generated from that build.
 build	v65536	1.0.1	main=bf0607ac795b593a3f685934c249147c	subsdk0=dade22cfe6f24efe62d76409522c850b	sdk=5bcf525f24eb28658a8d67ac27800d9b
 android_builds	v65536
 package	v65536
-shader_versions	v0
+shader_versions	v65536
 
 # ---- Files ----
 # load order as on Horizon: main, subsdk*, sdk (subsdk0 = NintendoSDK_movie)
